@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String         @id @default(uuid())
+  name           String
+  email          String         @unique
+  phone          String?
+  passwordHash   String
+  role           String         @default("buyer") // buyer, seller, agent, admin
+  verifiedStatus String         @default("unverified") // verified, unverified
+  avatar         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  properties     Property[]     @relation("UserProperties")
+  enquiriesSent  Enquiry[]      @relation("BuyerEnquiries")
+  enquiriesRecv  Enquiry[]      @relation("SellerEnquiries")
+  siteVisits     SiteVisit[]    @relation("BuyerVisits")
+  wishlistItems  Wishlist[]
+  savedAlerts    SavedSearchAlert[]
+  notifications  Notification[]
+  underwritingReports UnderwritingReport[]
+}
+
+model Property {
+  id             String          @id @default(uuid())
+  ownerId        String
+  title          String
+  description    String
+  type           String          // sale, rent
+  propertyType   String          // apartment, house, villa, condo, commercial, plot, independent_house, builder_floor, farmhouse
+  price          Float
+  address        String
+  city           String
+  state          String
+  zip            String
+  latitude       Float
+  longitude      Float
+  sizeSqft       Float
+  bedrooms       Int
+  bathrooms      Float
+  amenities      String          // JSON array of strings
+  status         String          @default("available") // available, pending, sold, rented
+  verifiedStatus String          @default("pending")   // pending, verified, rejected
+  featured       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  owner          User            @relation("UserProperties", fields: [ownerId], references: [id], onDelete: Cascade)
+  media          PropertyMedia[]
+  enquiries      Enquiry[]
+  siteVisits     SiteVisit[]
+  wishlistedBy   Wishlist[]
+  priceEstimates PriceEstimate[]
+  floorPlans     FloorPlan3D[]
+  underwritingReports UnderwritingReport[]
+}
+
+model PropertyMedia {
+  id         String   @id @default(uuid())
+  propertyId String
+  mediaUrl   String
+  type       String   @default("image") // image, video, tour360
+  caption    String?
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model Enquiry {
+  id         String   @id @default(uuid())
+  propertyId String
+  buyerId    String
+  sellerId   String
+  message    String
+  status     String   @default("pending") // pending, responded, closed
+  createdAt  DateTime @default(now())
+
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer      User     @relation("BuyerEnquiries", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller     User     @relation("SellerEnquiries", fields: [sellerId], references: [id], onDelete: Cascade)
+}
+
+model SiteVisit {
+  id                  String   @id @default(uuid())
+  propertyId          String
+  buyerId             String
+  requestedDate       String   // YYYY-MM-DD
+  requestedTime       String   // HH:MM
+  status              String   @default("pending") // pending, confirmed, cancelled, completed
+  notes               String?
+  pinCode             String?
+  smartLockId         String?
+  lockProvider        String?  @default("Seam")   // Seam, Yale, August
+  accessValidFrom     DateTime?
+  accessValidTo       DateTime?
+  checkInAt           DateTime?
+  checkOutAt          DateTime?
+  doorStatus          String   @default("locked")  // locked, unlocked
+  lockAlertTriggered  Boolean  @default(false)
+  lockAlertNotes      String?
+  createdAt           DateTime @default(now())
+
+  property            Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyer               User     @relation("BuyerVisits", fields: [buyerId], references: [id], onDelete: Cascade)
+  accessLogs          SmartLockAccessLog[]
+}
+
+model Wishlist {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // enquiry, visit_status, verification, alert, iot_security
+  message    String
+  readStatus Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavedSearchAlert {
+  id             String   @id @default(uuid())
+  userId         String
+  title          String
+  filterCriteria String   // JSON string of filter parameters
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PriceEstimate {
+  id                 String   @id @default(uuid())
+  propertyId         String
+  estimatedRangeMin  Float
+  estimatedRangeMax  Float
+  confidenceScore    Float
+  valuationFactors   String   // JSON string of factors breakdown
+  createdAt          DateTime @default(now())
+
+  property           Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model FloorPlan3D {
+  id             String   @id @default(uuid())
+  propertyId     String
+  status         String   @default("completed") // processing, completed, failed
+  sourceType     String   @default("photo2d")   // photo2d, tour360
+  sourceUrl      String?
+  roomsJson      String   // JSON string of room specs, dimensions, walls, doors
+  meshDataJson   String   // JSON string of 3D geometry coordinates & elevations
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model UnderwritingReport {
+  id                  String   @id @default(uuid())
+  propertyId          String
+  userId              String?
+  purchasePrice       Float
+  expectedRent        Float
+  downPaymentPercent  Float
+  interestRate        Float
+  vacancyRate         Float
+  noi                 Float
+  capRate             Float
+  dscr                Float
+  cashOnCashReturn    Float
+  irr                 Float
+  projectionDataJson  String   // JSON string for 10-year cash flows
+  macroTrendsJson     String   // JSON string for market macro trends
+  taxHistoryJson      String   // JSON string for tax records & comps
+  createdAt           DateTime @default(now())
+
+  property            Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user                User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model SmartLockAccessLog {
+  id          String   @id @default(uuid())
+  siteVisitId String
+  eventType   String   // pin_created, check_in, check_out, door_unlocked, door_locked, alert_triggered
+  message     String
+  actor       String   // buyer, lock_gateway, system
+  createdAt   DateTime @default(now())
+
+  siteVisit   SiteVisit @relation(fields: [siteVisitId], references: [id], onDelete: Cascade)
+}
+
