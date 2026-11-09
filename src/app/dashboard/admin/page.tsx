@@ -5,7 +5,8 @@ import AdminApprovalTable from '@/components/AdminApprovalTable';
 import AdminUserManagementTable from '@/components/AdminUserManagementTable';
 import AdminSystemAuditLogs from '@/components/AdminSystemAuditLogs';
 import AdminMarketHeatmap from '@/components/AdminMarketHeatmap';
-import { ShieldCheck, BarChart3, AlertTriangle, ShieldAlert, ArrowRight, Building2, User } from 'lucide-react';
+import AdminPropertiesTable from '@/components/AdminPropertiesTable';
+import { ShieldCheck, BarChart3, AlertTriangle, ShieldAlert, ArrowRight, Building2, User, PlusCircle } from 'lucide-react';
 import { Property, formatINR } from '@/types';
 import { scanPropertiesForFraud } from '@/lib/ai/adminFraudScanner';
 
@@ -42,6 +43,7 @@ export default async function AdminDashboardPage() {
 
   const flaggedListings = scanPropertiesForFraud(properties);
   const highRiskCount = flaggedListings.filter((f) => f.riskLevel === 'HIGH_RISK').length;
+  const soldCount = properties.filter((p) => p.status === 'sold' || p.status === 'rented').length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-[#eaf2ff]">
@@ -49,35 +51,32 @@ export default async function AdminDashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-[#5f86ff] font-extrabold text-xs uppercase tracking-wider mb-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Admin Verification & System Performance Command Center
+            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Admin Gateway — Full CRUD & System Command Center
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Admin Gateway Command Center
+            Admin Command Center
           </h1>
           <p className="text-xs text-[#93a9c7] mt-1">
-            Monitor system audit & real-time security logs, analyze spatial heatmap demand density, manage platform user access, track AI valuation accuracy, and approve property listings.
+            Full property management (add / edit / delete), user control, fraud detection, market heatmaps, and AI valuation monitoring.
           </p>
         </div>
 
         {/* Quick Portal Switcher for Admin */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Link
-            href="/dashboard/buyer"
-            className="chip hover:chip-active text-xs font-bold gap-1.5 flex items-center"
-          >
+          <Link href="/dashboard/buyer" className="chip hover:chip-active text-xs font-bold gap-1.5 flex items-center">
             <User className="w-4 h-4 text-[#5f86ff]" /> Buyer Portal <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-          <Link
-            href="/dashboard/seller"
-            className="chip hover:chip-active text-xs font-bold gap-1.5 flex items-center"
-          >
+          <Link href="/dashboard/seller" className="chip hover:chip-active text-xs font-bold gap-1.5 flex items-center">
             <Building2 className="w-4 h-4 text-emerald-400" /> Seller Portal <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <Link href="/properties" className="chip hover:chip-active text-xs font-bold gap-1.5 flex items-center">
+            <PlusCircle className="w-4 h-4 text-purple-400" /> All Listings <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
 
       {/* Admin KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="glass-card p-5 border border-white/15 shadow-xl">
           <div className="text-xs text-[#93a9c7] font-semibold mb-1">Total Platform Listings</div>
           <div className="text-2xl font-black text-white">{properties.length}</div>
@@ -94,10 +93,13 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="glass-card p-5 border border-rose-500/30 shadow-xl bg-rose-500/10">
-          <div className="text-xs text-rose-300 font-semibold mb-1">AI Flagged Fraud Risks</div>
-          <div className="text-2xl font-black text-rose-400">{highRiskCount}</div>
+          <div className="text-xs text-rose-300 font-semibold mb-1">Sold / Rented</div>
+          <div className="text-2xl font-black text-rose-400">{soldCount}</div>
         </div>
       </div>
+
+      {/* ===== PROPERTY MANAGEMENT (FULL CRUD) ===== */}
+      <AdminPropertiesTable />
 
       {/* TOP SECTION 1: System Audit & Real-Time Security Log */}
       <AdminSystemAuditLogs properties={properties} />

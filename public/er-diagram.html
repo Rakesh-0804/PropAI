@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ER Diagram - PropAI Real Estate Platform</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      background-color: #f1f5f9;
+      font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #1e293b;
+    }
+
+    .report-page {
+      background: #ffffff;
+      width: 100%;
+      max-width: 1100px;
+      padding: 50px 60px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+
+    p.cardinality-desc {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #334155;
+      margin-bottom: 25px;
+    }
+
+    .svg-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+
+    .svg-container svg {
+      width: 100%;
+      height: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+    }
+
+    .page-footer {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #64748b;
+      margin-top: 30px;
+    }
+
+    .action-bar {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: transparent;
+      }
+      .action-bar {
+        display: none;
+      }
+      .report-page {
+        box-shadow: none;
+        padding: 20px;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="action-bar">
+    <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="report-page">
+    <h2>Cardinality</h2>
+    <p class="cardinality-desc">
+      <strong>Cardinality</strong> defines the number of instances of one entity that can be associated with another entity. It indicates relationships such as One-to-One (1:1), One-to-Many (1:N), and Many-to-Many (M:N). For example, one Seller can list many Properties (1:N), and one Property can have multiple Scheduled Site Visits (1:N) with IoT Smart Lock Access Logs.
+    </p>
+
+    <div class="svg-container">
+      <!-- Embedded SVG -->
+      <img src="/er-diagram-propai.svg" alt="ER Diagram for PropAI Real Estate Platform" style="width: 100%; height: auto;" />
+    </div>
+
+    <div class="page-footer">
+      20
+    </div>
+  </div>
+
+</body>
+</html>
