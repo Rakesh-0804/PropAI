@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, MapPin, DollarSign, Layers, Image as ImageIcon, TrendingUp, Loader2, Percent, Receipt, ShieldAlert } from 'lucide-react';
+import { X, Save, Building2, MapPin, DollarSign, Layers, Image as ImageIcon, TrendingUp, Loader2, Percent, Receipt, ShieldAlert, Compass } from 'lucide-react';
+import { DISTINCT_360_PANORAMAS, buildPannellumUrl, getDistinctTour360Url } from '@/lib/panoramas';
 
 const AMENITY_OPTIONS = [
   'Swimming Pool', 'Gym', 'Parking', 'Security', 'Lift', 'Power Backup',
@@ -669,9 +670,26 @@ export default function AdminPropertyEditor({ property, onClose, onSaved }: Admi
                       placeholder="https://images.unsplash.com/photo-... or https://cdn.pannellum.org/..."
                     />
                     <div className="flex gap-2">
-                      <select className={selectCls + ' w-36'} value={item.type} onChange={(e) => updateMedia(i, 'type', e.target.value)}>
+                      <select
+                        className={selectCls + ' w-44'}
+                        value={item.type}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          if (newType === 'tour360' && (!item.mediaUrl || item.mediaUrl.includes('alma.jpg'))) {
+                            const distinct = getDistinctTour360Url(form.title || 'Prop', form.propertyType, form.title);
+                            setForm((f) => ({
+                              ...f,
+                              mediaItems: f.mediaItems.map((m, idx) =>
+                                idx === i ? { ...m, type: newType, mediaUrl: distinct, caption: 'Interactive 360° Virtual Tour' } : m
+                              ),
+                            }));
+                          } else {
+                            updateMedia(i, 'type', newType);
+                          }
+                        }}
+                      >
                         <option value="image">Photo Image</option>
-                        <option value="tour360">360° Virtual Tour</option>
+                        <option value="tour360">🌐 360° Virtual Tour</option>
                         <option value="video">Property Video</option>
                       </select>
                       <input
@@ -681,6 +699,45 @@ export default function AdminPropertyEditor({ property, onClose, onSaved }: Admi
                         placeholder="Caption e.g. Master Bedroom Sea View"
                       />
                     </div>
+                    {item.type === 'tour360' && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[10px] text-[#5f86ff] font-bold">Pick 360 Scene:</span>
+                        <select
+                          className="bg-black/40 border border-white/20 rounded px-2 py-1 text-[11px] text-white focus:outline-none"
+                          onChange={(e) => {
+                            const scene = DISTINCT_360_PANORAMAS.find((s) => s.id === e.target.value);
+                            if (scene) {
+                              const newUrl = buildPannellumUrl(scene.imageUrl, {
+                                title: form.title || scene.name,
+                                yaw: scene.defaultYaw,
+                                pitch: scene.defaultPitch,
+                                autoRotate: -1,
+                              });
+                              updateMedia(i, 'mediaUrl', newUrl);
+                              updateMedia(i, 'caption', `${scene.name} (360 Tour)`);
+                            }
+                          }}
+                        >
+                          <option value="">-- Choose Distinct 360 Scene --</option>
+                          {DISTINCT_360_PANORAMAS.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name} ({s.category})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const autoUrl = getDistinctTour360Url(form.title || `Prop-${Date.now()}`, form.propertyType, form.title);
+                            updateMedia(i, 'mediaUrl', autoUrl);
+                            updateMedia(i, 'caption', 'Unique 360° Panoramic Tour');
+                          }}
+                          className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
+                        >
+                          🎲 Auto Unique 360
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => removeMedia(i)}

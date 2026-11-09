@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { calculatePriceEstimate } from '@/lib/ai/priceEstimator';
 import { computePropertyMatchScore } from '@/lib/ai/matchScorer';
 import { getCurrentUser } from '@/lib/auth';
+import { getDistinctTour360Url } from '@/lib/panoramas';
 
 // In-memory cache for ultra-fast API response times (< 5ms)
 const propertiesCache = new Map<string, { data: any; timestamp: number }>();
@@ -37,8 +38,8 @@ const FALLBACK_PROPERTIES = [
     updatedAt: new Date().toISOString(),
     owner: { name: 'Priya Sundaram (Seller)', email: 'seller@example.com' },
     media: [
-      { mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80', type: 'image', caption: 'Skyline Balcony' },
+      { mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/cerro-toco-1.jpg&autoLoad=true&title=Skyline%20Penthouse%20Terrace%20360&yaw=45&pitch=-8&autoRotate=-1', type: 'tour360', caption: 'Skyline Penthouse Terrace (360 Tour)' },
     ],
     matchScore: 98,
   },
@@ -66,7 +67,8 @@ const FALLBACK_PROPERTIES = [
     updatedAt: new Date().toISOString(),
     owner: { name: 'Rajesh Verma (Agent)', email: 'agent@example.com' },
     media: [
-      { mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+      { mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', type: 'image', caption: 'Ocean Facing Living' },
+      { mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/tocopilla.jpg&autoLoad=true&title=Oceanfront%20Marine%20Balcony%20360&yaw=180&pitch=-2&autoRotate=-1', type: 'tour360', caption: 'Oceanfront Marine Balcony (360 Tour)' },
     ],
     matchScore: 95,
   },
@@ -94,7 +96,8 @@ const FALLBACK_PROPERTIES = [
     updatedAt: new Date().toISOString(),
     owner: { name: 'Priya Sundaram (Seller)', email: 'seller@example.com' },
     media: [
-      { mediaUrl: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+      { mediaUrl: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80', type: 'image', caption: 'Golf Course Villa Exterior' },
+      { mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/bma-0.jpg&autoLoad=true&title=Grand%20Palace%20Marble%20Atrium%20360&yaw=90&pitch=10&autoRotate=-1', type: 'tour360', caption: 'Grand Marble Atrium (360 Tour)' },
     ],
     matchScore: 92,
   },
@@ -122,7 +125,8 @@ const FALLBACK_PROPERTIES = [
     updatedAt: new Date().toISOString(),
     owner: { name: 'Priya Sundaram (Seller)', email: 'seller@example.com' },
     media: [
-      { mediaUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80', type: 'image' },
+      { mediaUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80', type: 'image', caption: 'Lawn Garden' },
+      { mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/from-tree.jpg&autoLoad=true&title=Eco%20Sanctuary%20Canopy%20360&yaw=0&pitch=-15&autoRotate=-1', type: 'tour360', caption: 'Eco Sanctuary Canopy (360 Tour)' },
     ],
     matchScore: 96,
   },
@@ -186,8 +190,29 @@ export async function GET(request: Request) {
         }
       );
 
+      const mediaList = Array.isArray(p.media)
+        ? p.media.map((m: any) => ({
+            ...m,
+            mediaUrl:
+              m.type === 'tour360' && (m.mediaUrl?.includes('alma.jpg') || !m.mediaUrl)
+                ? getDistinctTour360Url(p.id, p.propertyType, p.title)
+                : m.mediaUrl,
+          }))
+        : [];
+
+      if (!mediaList.some((m: any) => m.type === 'tour360')) {
+        mediaList.push({
+          id: `tour-${p.id}`,
+          propertyId: p.id,
+          mediaUrl: getDistinctTour360Url(p.id, p.propertyType, p.title),
+          type: 'tour360',
+          caption: 'Interactive 360° Virtual Tour View',
+        });
+      }
+
       return {
         ...p,
+        media: mediaList,
         amenities: amenitiesArr,
         createdAt: typeof p.createdAt === 'string' ? p.createdAt : p.createdAt?.toISOString(),
         updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : p.updatedAt?.toISOString(),

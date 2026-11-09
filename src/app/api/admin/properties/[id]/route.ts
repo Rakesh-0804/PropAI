@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { getDistinctTour360Url } from '@/lib/panoramas';
 
 // Admin: GET single property with full financial details
 export async function GET(
@@ -156,7 +157,10 @@ export async function PATCH(
           await prisma.propertyMedia.createMany({
             data: mediaItems.map((m: { mediaUrl: string; type?: string; caption?: string }) => ({
               propertyId: params.id,
-              mediaUrl: m.mediaUrl || '',
+              mediaUrl:
+                m.type === 'tour360' && (m.mediaUrl.includes('alma.jpg') || !m.mediaUrl)
+                  ? getDistinctTour360Url(params.id, updated.propertyType, updated.title)
+                  : m.mediaUrl || '',
               type: m.type || 'image',
               caption: m.caption || null,
             })),

@@ -126,7 +126,28 @@ async function main() {
     ],
   };
 
-  const tour360Url = 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg';
+  const PANORAMAS_CATALOG = [
+    { name: 'Contemporary Art Living Lounge', url: 'https://pannellum.org/images/bma-1.jpg', yaw: 15, pitch: -4 },
+    { name: 'Architectural Mid-Century Master Suite', url: 'https://pannellum.org/images/jfk.jpg', yaw: -60, pitch: 0 },
+    { name: 'Grand Imperial Marble Foyer & Atrium', url: 'https://pannellum.org/images/bma-0.jpg', yaw: 90, pitch: 10 },
+    { name: 'Waterfront Marine Promenade & Balcony View', url: 'https://pannellum.org/images/tocopilla.jpg', yaw: 180, pitch: -2 },
+    { name: 'Sky Penthouse Observatory Deck', url: 'https://pannellum.org/images/cerro-toco-1.jpg', yaw: 45, pitch: -8 },
+    { name: 'Heritage Streetscape & Neighborhood Garden', url: 'https://pannellum.org/images/charles-street.jpg', yaw: -110, pitch: 2 },
+    { name: 'Eco-Villa Nature Sanctuary Canopy', url: 'https://pannellum.org/images/from-tree.jpg', yaw: 0, pitch: -15 },
+    { name: 'Smart Automation Hub & Interior Lounge', url: 'https://pannellum.org/images/alma-correlator-facility.jpg', yaw: 120, pitch: 0 },
+    { name: 'Mountain Villa Panoramic Vista', url: 'https://pannellum.org/images/cerro-toco-0.jpg', yaw: -45, pitch: -5 },
+    { name: 'Commercial Executive Gallery & Atrium', url: 'https://pannellum.org/images/bloomberg.jpg', yaw: 30, pitch: 8 },
+    { name: 'Gated Community Lawn & Clubhouse Grounds', url: 'https://pannellum.org/images/wyman-park-playground.jpg', yaw: -90, pitch: 0 },
+    { name: 'Private Estate Valley & Ridge Panorama', url: 'https://pannellum.org/images/lascar.jpg', yaw: 160, pitch: -6 },
+    { name: 'Modernist Architectural Glass Pavilion', url: 'https://pannellum.org/images/alma.jpg', yaw: -15, pitch: -2 }
+  ];
+
+  function getSeedTour360(title: string, index: number) {
+    const scene = PANORAMAS_CATALOG[index % PANORAMAS_CATALOG.length];
+    const encoded = encodeURIComponent(title.substring(0, 35));
+    const yaw = scene.yaw + ((index * 13) % 30) - 15;
+    return `https://cdn.pannellum.org/2.5/pannellum.htm#panorama=${scene.url}&autoLoad=true&title=${encoded}&yaw=${yaw}&pitch=${scene.pitch}&autoRotate=-1`;
+  }
 
   // Define All Target Cities (10 Indian + 12 International Global)
   const citySpecs: Array<{
@@ -235,7 +256,7 @@ async function main() {
             create: [
               { mediaUrl: mainImgUrl, type: 'image', caption: `${area} Primary Exterior View` },
               { mediaUrl: interiorImgUrl, type: 'image', caption: 'Luxury Interior Lounge' },
-              { mediaUrl: tour360Url, type: 'tour360', caption: 'Interactive 360° Virtual Tour View' },
+              { mediaUrl: getSeedTour360(titleText, globalCount), type: 'tour360', caption: 'Interactive 360° Virtual Tour View' },
             ],
           },
         });
@@ -312,7 +333,7 @@ async function main() {
         create: [
           { mediaUrl: mainImgUrl, type: 'image', caption: `${bProp.title} Exterior` },
           { mediaUrl: interiorImgUrl, type: 'image', caption: 'Compact Lounge & Kitchen' },
-          { mediaUrl: tour360Url, type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
+          { mediaUrl: getSeedTour360(bProp.title, 100 + idx), type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
         ],
       },
     });
@@ -389,7 +410,7 @@ async function main() {
         create: [
           { mediaUrl: mainImgUrl, type: 'image', caption: `${bProp.title} Main Building` },
           { mediaUrl: interiorImgUrl, type: 'image', caption: 'Modern Interior Space' },
-          { mediaUrl: tour360Url, type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
+          { mediaUrl: getSeedTour360(bProp.title, 100 + idx), type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
         ],
       },
     });
@@ -466,7 +487,7 @@ async function main() {
         create: [
           { mediaUrl: mainImgUrl, type: 'image', caption: `${bProp.title} Prime Facade` },
           { mediaUrl: interiorImgUrl, type: 'image', caption: 'Luxury Living & Dining Room' },
-          { mediaUrl: tour360Url, type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
+          { mediaUrl: getSeedTour360(bProp.title, 100 + idx), type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
         ],
       },
     });

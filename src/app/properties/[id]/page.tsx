@@ -11,6 +11,7 @@ import { calculatePriceEstimate } from '@/lib/ai/priceEstimator';
 import { computePropertyMatchScore } from '@/lib/ai/matchScorer';
 import { rankRecommendedProperties } from '@/lib/ai/recommender';
 import { Property, NearbyPlace } from '@/types';
+import { getDistinctTour360Url } from '@/lib/panoramas';
 
 export const revalidate = 60; // Cache and revalidate every 60s for lightning fast responses
 
@@ -50,7 +51,7 @@ const FALLBACK_DETAIL_PROPERTIES: Record<string, Property> = {
     media: [
       { id: 'm1', propertyId: 'prop-buyer-1', mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80', type: 'image' },
       { id: 'm2', propertyId: 'prop-buyer-1', mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { id: 'm3', propertyId: 'prop-buyer-1', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { id: 'm3', propertyId: 'prop-buyer-1', mediaUrl: getDistinctTour360Url('prop-buyer-1', 'apartment', 'The Sky View Glass Penthouse'), type: 'tour360', caption: 'Skyline Terrace (360 Tour)' },
     ],
   },
   'prop-buyer-2': {
@@ -79,7 +80,7 @@ const FALLBACK_DETAIL_PROPERTIES: Record<string, Property> = {
     owner: { id: 'usr-agent-demo', name: 'Rajesh Verma (Agent)', email: 'agent@example.com', role: 'agent', verifiedStatus: 'verified' },
     media: [
       { id: 'm21', propertyId: 'prop-buyer-2', mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { id: 'm22', propertyId: 'prop-buyer-2', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { id: 'm22', propertyId: 'prop-buyer-2', mediaUrl: getDistinctTour360Url('prop-buyer-2', 'apartment', 'Oberoi Sky Heights Luxury Suite'), type: 'tour360', caption: 'Ocean Balcony (360 Tour)' },
     ],
   },
   'prop-buyer-3': {
@@ -108,7 +109,7 @@ const FALLBACK_DETAIL_PROPERTIES: Record<string, Property> = {
     owner: { id: 'usr-seller-demo', name: 'Priya Sundaram (Seller)', email: 'seller@example.com', role: 'seller', verifiedStatus: 'verified' },
     media: [
       { id: 'm31', propertyId: 'prop-buyer-3', mediaUrl: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { id: 'm32', propertyId: 'prop-buyer-3', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { id: 'm32', propertyId: 'prop-buyer-3', mediaUrl: getDistinctTour360Url('prop-buyer-3', 'villa', 'DLF Golf Estate Super Luxury Villa'), type: 'tour360', caption: 'Grand Marble Atrium (360 Tour)' },
     ],
   },
   'prop-buyer-4': {
@@ -137,7 +138,7 @@ const FALLBACK_DETAIL_PROPERTIES: Record<string, Property> = {
     owner: { id: 'usr-seller-demo', name: 'Priya Sundaram (Seller)', email: 'seller@example.com', role: 'seller', verifiedStatus: 'verified' },
     media: [
       { id: 'm41', propertyId: 'prop-buyer-4', mediaUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { id: 'm42', propertyId: 'prop-buyer-4', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { id: 'm42', propertyId: 'prop-buyer-4', mediaUrl: getDistinctTour360Url('prop-buyer-4', 'villa', 'Adarsh Palm Retreat Eco Villa'), type: 'tour360', caption: 'Eco Sanctuary Canopy (360 Tour)' },
     ],
   },
 };
@@ -174,7 +175,7 @@ function createDynamicFallbackProperty(id: string): Property {
     media: [
       { id: `m-${id}-1`, propertyId: id, mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80', type: 'image' },
       { id: `m-${id}-2`, propertyId: id, mediaUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80', type: 'image' },
-      { id: `m-${id}-3`, propertyId: id, mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360' },
+      { id: `m-${id}-3`, propertyId: id, mediaUrl: getDistinctTour360Url(id, 'apartment', `Residence ${id}`), type: 'tour360', caption: 'Interactive 360° Virtual Tour' },
     ],
   };
 }
@@ -228,6 +229,9 @@ async function getPropertyData(id: string) {
         media: raw.media.map(m => ({
           ...m,
           type: m.type as any,
+          mediaUrl: m.type === 'tour360' && (m.mediaUrl.includes('alma.jpg') || !m.mediaUrl)
+            ? getDistinctTour360Url(raw.id, raw.propertyType, raw.title)
+            : m.mediaUrl,
           createdAt: m.createdAt.toISOString(),
         })),
       };

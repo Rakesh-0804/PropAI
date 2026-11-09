@@ -238,6 +238,7 @@ export default function PropertyDetailClient({
             <VirtualTourViewer
               tourUrl={tourMedia?.mediaUrl}
               propertyTitle={property.title}
+              propertyType={property.propertyType}
               isEmbedded={true}
             />
           )}

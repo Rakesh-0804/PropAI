@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { getDistinctTour360Url } from '@/lib/panoramas';
 
 const FALLBACK_ADMIN_PROPERTIES = [
   {
@@ -29,7 +30,7 @@ const FALLBACK_ADMIN_PROPERTIES = [
     owner: { id: 'usr-seller-1', name: 'Priya Sundaram (Seller)', email: 'seller@example.com', role: 'seller', verifiedStatus: 'verified' },
     media: [
       { id: 'm1', propertyId: 'prop-fallback-1', mediaUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80', type: 'image', caption: 'Skyline Balcony' },
-      { id: 'm2', propertyId: 'prop-fallback-1', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/alma.jpg', type: 'tour360', caption: 'Living Room 360' },
+      { id: 'm2', propertyId: 'prop-fallback-1', mediaUrl: 'https://cdn.pannellum.org/2.5/pannellum.htm#panorama=https://pannellum.org/images/cerro-toco-1.jpg&autoLoad=true&title=Skyline%20Penthouse%20Terrace%20360&yaw=45&pitch=-8&autoRotate=-1', type: 'tour360', caption: 'Skyline Terrace 360' },
     ],
     underwritingReports: [
       {
@@ -347,9 +348,18 @@ export async function POST(request: Request) {
         include: { media: true, owner: true },
       });
 
-      if (Array.isArray(mediaItems) && mediaItems.length > 0) {
+      const finalMediaItems = Array.isArray(mediaItems) ? [...mediaItems] : [];
+      if (!finalMediaItems.some((m: { type?: string }) => m.type === 'tour360')) {
+        finalMediaItems.push({
+          mediaUrl: getDistinctTour360Url(property.id, property.propertyType, property.title),
+          type: 'tour360',
+          caption: `${property.title} (360 Tour)`,
+        });
+      }
+
+      if (finalMediaItems.length > 0) {
         await prisma.propertyMedia.createMany({
-          data: mediaItems.map((m: { mediaUrl: string; type?: string; caption?: string }) => ({
+          data: finalMediaItems.map((m: { mediaUrl: string; type?: string; caption?: string }) => ({
             propertyId: property.id,
             mediaUrl: m.mediaUrl || '',
             type: m.type || 'image',
