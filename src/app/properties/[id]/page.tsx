@@ -12,6 +12,7 @@ import { computePropertyMatchScore } from '@/lib/ai/matchScorer';
 import { rankRecommendedProperties } from '@/lib/ai/recommender';
 import { Property, NearbyPlace } from '@/types';
 import { getDistinctTour360Url } from '@/lib/panoramas';
+import { getCachedProperty, getAllCachedProperties } from '@/lib/propertyCache';
 
 export const revalidate = 60; // Cache and revalidate every 60s for lightning fast responses
 
@@ -187,74 +188,64 @@ async function getPropertyData(id: string) {
     return cached.data;
   }
 
-  let property: Property | null = null;
-  let allProps: Property[] = [];
+  // Check global shared property cache first for instant (< 1ms) resolution
+  const memCached = getCachedProperty(id);
+  let property: Property | null = memCached || null;
+  let allProps: Property[] = getAllCachedProperties();
 
-  try {
-    const [raw, allPropsRaw] = await Promise.all([
-      prisma.property.findUnique({
+  if (!property) {
+    try {
+      // Query single property with 1500ms safety timeout
+      const dbPromise = prisma.property.findUnique({
         where: { id },
         include: {
           media: true,
           owner: true,
         },
-      }),
-      prisma.property.findMany({
-        where: { verifiedStatus: 'verified', id: { not: id } },
-        include: { media: true },
-        take: 6,
-      }),
-    ]);
+      });
 
-    if (raw) {
-      const parsedAmenities: string[] = JSON.parse(raw.amenities || '[]');
-      property = {
-        ...raw,
-        amenities: parsedAmenities,
-        createdAt: raw.createdAt.toISOString(),
-        updatedAt: raw.updatedAt.toISOString(),
-        type: raw.type as 'sale' | 'rent',
-        propertyType: raw.propertyType as any,
-        status: raw.status as any,
-        verifiedStatus: raw.verifiedStatus as any,
-        owner: raw.owner ? {
-          id: raw.owner.id,
-          name: raw.owner.name,
-          email: raw.owner.email,
-          phone: raw.owner.phone || undefined,
-          role: raw.owner.role as any,
-          verifiedStatus: raw.owner.verifiedStatus,
-          avatar: raw.owner.avatar || undefined,
-        } : undefined,
-        media: raw.media.map(m => ({
-          ...m,
-          type: m.type as any,
-          mediaUrl: m.type === 'tour360' && (m.mediaUrl.includes('alma.jpg') || !m.mediaUrl)
-            ? getDistinctTour360Url(raw.id, raw.propertyType, raw.title)
-            : m.mediaUrl,
-          createdAt: m.createdAt.toISOString(),
-        })),
-      };
-    }
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Prisma property detail query timeout')), 1500)
+      );
 
-    if (allPropsRaw && allPropsRaw.length > 0) {
-      allProps = allPropsRaw.map(p => ({
-        ...p,
-        amenities: JSON.parse(p.amenities || '[]'),
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-        type: p.type as any,
-        propertyType: p.propertyType as any,
-        status: p.status as any,
-        verifiedStatus: p.verifiedStatus as any,
-        media: p.media.map(m => ({ ...m, type: m.type as any, createdAt: m.createdAt.toISOString() })),
-      }));
+      const raw = await Promise.race([dbPromise, timeoutPromise]);
+
+      if (raw) {
+        const parsedAmenities: string[] = JSON.parse(raw.amenities || '[]');
+        property = {
+          ...raw,
+          amenities: parsedAmenities,
+          createdAt: raw.createdAt.toISOString(),
+          updatedAt: raw.updatedAt.toISOString(),
+          type: raw.type as 'sale' | 'rent',
+          propertyType: raw.propertyType as any,
+          status: raw.status as any,
+          verifiedStatus: raw.verifiedStatus as any,
+          owner: raw.owner ? {
+            id: raw.owner.id,
+            name: raw.owner.name,
+            email: raw.owner.email,
+            phone: raw.owner.phone || undefined,
+            role: raw.owner.role as any,
+            verifiedStatus: raw.owner.verifiedStatus,
+            avatar: raw.owner.avatar || undefined,
+          } : undefined,
+          media: raw.media.map(m => ({
+            ...m,
+            type: m.type as any,
+            mediaUrl: m.type === 'tour360' && (m.mediaUrl.includes('alma.jpg') || !m.mediaUrl)
+              ? getDistinctTour360Url(raw.id, raw.propertyType, raw.title)
+              : m.mediaUrl,
+            createdAt: m.createdAt.toISOString(),
+          })),
+        };
+      }
+    } catch (error) {
+      console.warn(`Prisma query timed out or failed for ID ${id}. Serving fallback details:`, error);
     }
-  } catch (error) {
-    console.warn(`Prisma query failed in getPropertyData for ID ${id}. Serving fallback details:`, error);
   }
 
-  // If DB query didn't return property (or DB was unreachable), use robust fallback property
+  // If DB query didn't return property (or DB was slow/unreachable), use robust fallback property
   if (!property) {
     property = createDynamicFallbackProperty(id);
   }

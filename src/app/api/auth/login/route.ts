@@ -2,11 +2,35 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyPassword, signToken, setAuthCookie } from '@/lib/auth';
 
-const DEMO_ACCOUNTS: Record<string, any> = {
-  'buyer@example.com': { id: 'usr-buyer-demo', name: 'Rohan Sharma (Buyer)', role: 'buyer', phone: '+91 98765 43210' },
-  'seller@example.com': { id: 'usr-seller-demo', name: 'Priya Sundaram (Seller)', role: 'seller', phone: '+91 98123 45678' },
-  'agent@example.com': { id: 'usr-agent-demo', name: 'Rajesh Verma (Agent)', role: 'agent', phone: '+91 97111 22334' },
-  'admin@example.com': { id: 'usr-admin-demo', name: 'Platform Admin', role: 'admin', phone: '+91 99000 11223' },
+const DEMO_ACCOUNTS: Record<string, { id: string; name: string; role: 'buyer' | 'seller' | 'agent' | 'admin'; phone: string; defaultRedirect: string }> = {
+  'admin@example.com': {
+    id: 'usr-admin-demo',
+    name: 'Platform Admin',
+    role: 'admin',
+    phone: '+91 99000 11223',
+    defaultRedirect: '/dashboard/admin',
+  },
+  'seller@example.com': {
+    id: 'usr-seller-demo',
+    name: 'Priya Sundaram (Seller)',
+    role: 'seller',
+    phone: '+91 98123 45678',
+    defaultRedirect: '/dashboard/seller',
+  },
+  'buyer@example.com': {
+    id: 'usr-buyer-demo',
+    name: 'Rohan Sharma (Buyer)',
+    role: 'buyer',
+    phone: '+91 98765 43210',
+    defaultRedirect: '/dashboard/buyer',
+  },
+  'agent@example.com': {
+    id: 'usr-agent-demo',
+    name: 'Rajesh Verma (Agent)',
+    role: 'agent',
+    phone: '+91 97111 22334',
+    defaultRedirect: '/dashboard/seller',
+  },
 };
 
 export async function POST(request: Request) {
@@ -18,30 +42,59 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    let user: any = null;
 
-    try {
-      user = await prisma.user.findUnique({
-        where: { email: cleanEmail },
+    // ULTRA FAST PATH: Instant (< 5ms) authentication for demo accounts
+    if (DEMO_ACCOUNTS[cleanEmail] && password === 'password123') {
+      const demo = DEMO_ACCOUNTS[cleanEmail];
+      const token = signToken({
+        userId: demo.id,
+        email: cleanEmail,
+        role: demo.role,
       });
-    } catch (dbErr) {
-      console.warn('Prisma Database connection unavailable. Attempting demo fallback...');
+
+      await setAuthCookie(token);
+
+      return NextResponse.json({
+        user: {
+          id: demo.id,
+          name: demo.name,
+          email: cleanEmail,
+          phone: demo.phone,
+          role: demo.role,
+          avatar: null,
+        },
+        redirectTo: demo.defaultRedirect,
+        message: 'Logged in successfully',
+      });
     }
 
-    // Demo account fallback validation if DB is offline or account not found
-    if (!user && DEMO_ACCOUNTS[cleanEmail]) {
-      if (password === 'password123') {
-        user = {
-          id: DEMO_ACCOUNTS[cleanEmail].id,
-          name: DEMO_ACCOUNTS[cleanEmail].name,
-          email: cleanEmail,
-          phone: DEMO_ACCOUNTS[cleanEmail].phone,
-          passwordHash: '',
-          role: DEMO_ACCOUNTS[cleanEmail].role,
-          verifiedStatus: 'verified',
-          avatar: null,
-        };
-      }
+    // Standard User Authentication with DB Timeout (max 2 seconds)
+    let user: any = null;
+    try {
+      const dbPromise = prisma.user.findUnique({
+        where: { email: cleanEmail },
+      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timed out')), 2000)
+      );
+      user = await Promise.race([dbPromise, timeoutPromise]);
+    } catch (dbErr) {
+      console.warn('Prisma Database query bypassed or timed out:', dbErr);
+    }
+
+    // Fallback if DB was unavailable and it matched demo account with correct password
+    if (!user && DEMO_ACCOUNTS[cleanEmail] && password === 'password123') {
+      const demo = DEMO_ACCOUNTS[cleanEmail];
+      user = {
+        id: demo.id,
+        name: demo.name,
+        email: cleanEmail,
+        phone: demo.phone,
+        passwordHash: '',
+        role: demo.role,
+        verifiedStatus: 'verified',
+        avatar: null,
+      };
     }
 
     if (!user) {
@@ -49,9 +102,11 @@ export async function POST(request: Request) {
     }
 
     const isDemoAccount = Boolean(DEMO_ACCOUNTS[cleanEmail]);
-    const isValid = (isDemoAccount && password === 'password123')
+    const isValid = isDemoAccount && password === 'password123'
       ? true
-      : (user.passwordHash ? await verifyPassword(password, user.passwordHash) : false);
+      : user.passwordHash
+      ? await verifyPassword(password, user.passwordHash)
+      : false;
 
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
@@ -65,6 +120,13 @@ export async function POST(request: Request) {
 
     await setAuthCookie(token);
 
+    const redirectPath =
+      user.role === 'admin'
+        ? '/dashboard/admin'
+        : user.role === 'seller' || user.role === 'agent'
+        ? '/dashboard/seller'
+        : '/dashboard/buyer';
+
     return NextResponse.json({
       user: {
         id: user.id,
@@ -74,6 +136,7 @@ export async function POST(request: Request) {
         role: user.role,
         avatar: user.avatar,
       },
+      redirectTo: redirectPath,
       message: 'Logged in successfully',
     });
   } catch (error: any) {

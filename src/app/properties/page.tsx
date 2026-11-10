@@ -30,6 +30,18 @@ export default function PropertiesPage() {
   });
 
   useEffect(() => {
+    // Instant cache-first hydration for sub-millisecond page rendering
+    try {
+      const cached = sessionStorage.getItem('cached_properties_list');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setProperties(parsed);
+          setLoading(false);
+        }
+      }
+    } catch {}
+
     fetchProperties();
     const savedCompare = JSON.parse(localStorage.getItem('compare_ids') || '[]');
     setComparedIds(savedCompare);
@@ -41,11 +53,15 @@ export default function PropertiesPage() {
   }, [filters]);
 
   const fetchProperties = async () => {
-    setLoading(true);
     try {
       const res = await fetch('/api/properties');
       const data = await res.json();
-      setProperties(data.properties || []);
+      if (data.properties && Array.isArray(data.properties)) {
+        setProperties(data.properties);
+        try {
+          sessionStorage.setItem('cached_properties_list', JSON.stringify(data.properties));
+        } catch {}
+      }
     } catch (err) {
       console.error('Failed to fetch properties:', err);
     } finally {

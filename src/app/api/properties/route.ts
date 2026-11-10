@@ -4,6 +4,7 @@ import { calculatePriceEstimate } from '@/lib/ai/priceEstimator';
 import { computePropertyMatchScore } from '@/lib/ai/matchScorer';
 import { getCurrentUser } from '@/lib/auth';
 import { getDistinctTour360Url } from '@/lib/panoramas';
+import { bulkCacheProperties } from '@/lib/propertyCache';
 
 // In-memory cache for ultra-fast API response times (< 5ms)
 const propertiesCache = new Map<string, { data: any; timestamp: number }>();
@@ -222,6 +223,7 @@ export async function GET(request: Request) {
 
     const responseData = { properties };
     propertiesCache.set(cacheKey, { data: responseData, timestamp: now });
+    bulkCacheProperties(properties as any);
 
     return NextResponse.json(responseData, {
       headers: { 'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=120' }

@@ -47,8 +47,8 @@ export default function PropertyCard({ property, onCompareToggle, isCompared = f
 
   return (
     <div className="group glass-card overflow-hidden border border-white/15 hover:border-white/30 shadow-2xl transition-all duration-300 flex flex-col h-full">
-      {/* Image Container */}
-      <div className="relative aspect-16/10 w-full overflow-hidden bg-slate-900/60">
+      {/* Image Container with clickable link */}
+      <Link href={`/properties/${property.id}`} prefetch={true} className="relative aspect-16/10 w-full overflow-hidden bg-slate-900/60 block cursor-pointer">
         <Image
           src={primaryImage}
           alt={property.title}
@@ -83,7 +83,7 @@ export default function PropertyCard({ property, onCompareToggle, isCompared = f
         {/* Wishlist Button */}
         <button
           onClick={toggleWishlist}
-          className="absolute top-3 right-3 p-2 rounded-full bg-slate-950/60 hover:bg-slate-900 text-slate-300 hover:text-red-400 backdrop-blur-md border border-white/20 transition-colors z-10"
+          className="absolute top-3 right-3 p-2 rounded-full bg-slate-950/60 hover:bg-slate-900 text-slate-300 hover:text-red-400 backdrop-blur-md border border-white/20 transition-colors z-20 cursor-pointer"
           title="Add to Wishlist"
         >
           <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
@@ -94,7 +94,7 @@ export default function PropertyCard({ property, onCompareToggle, isCompared = f
           {formattedPrice}
           {property.type === 'rent' && <span className="text-xs font-normal text-slate-300">/mo</span>}
         </div>
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="p-5 flex flex-col justify-between flex-1 space-y-4">

@@ -6,7 +6,7 @@ import { User } from '@/types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectTo?: string; user?: User }>;
   signup: (data: { name: string; email: string; password: string; phone?: string; role: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   switchDemoUser: (role: 'buyer' | 'seller' | 'agent' | 'admin') => Promise<void>;
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) return { success: false, error: data.error || 'Login failed' };
 
       setUser(data.user);
-      return { success: true };
+      return { success: true, redirectTo: data.redirectTo, user: data.user };
     } catch (error) {
       return { success: false, error: 'Network error' };
     }
