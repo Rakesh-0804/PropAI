@@ -2,9 +2,49 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { prisma } from './db';
+import { safeDbQuery } from './dbCircuitBreaker';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-real-estate-key-2026';
 const TOKEN_NAME = 'prop_auth_token';
+
+const DEMO_USERS_MAP: Record<string, any> = {
+  'usr-admin-demo': {
+    id: 'usr-admin-demo',
+    name: 'Platform Admin',
+    email: 'admin@example.com',
+    phone: '+91 99000 11223',
+    role: 'admin',
+    verifiedStatus: 'verified',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  'usr-seller-demo': {
+    id: 'usr-seller-demo',
+    name: 'Priya Sundaram (Seller)',
+    email: 'seller@example.com',
+    phone: '+91 98123 45678',
+    role: 'seller',
+    verifiedStatus: 'verified',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  'usr-buyer-demo': {
+    id: 'usr-buyer-demo',
+    name: 'Rohan Sharma (Buyer)',
+    email: 'buyer@example.com',
+    phone: '+91 98765 43210',
+    role: 'buyer',
+    verifiedStatus: 'verified',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  'usr-agent-demo': {
+    id: 'usr-agent-demo',
+    name: 'Rajesh Verma (Agent)',
+    email: 'agent@example.com',
+    phone: '+91 97111 22334',
+    role: 'agent',
+    verifiedStatus: 'verified',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+};
 
 export interface TokenPayload {
   userId: string;
@@ -67,29 +107,37 @@ export async function getCurrentUser() {
   const payload = verifyToken(token);
   if (!payload) return null;
 
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        verifiedStatus: true,
-        avatar: true,
-        createdAt: true,
-      },
-    });
+  // FAST PATH: Demo accounts return instantly (0ms) without contacting DB
+  if (DEMO_USERS_MAP[payload.userId]) {
+    return { ...DEMO_USERS_MAP[payload.userId] };
+  }
 
-    if (user) {
-      return {
-        ...user,
-        createdAt: user.createdAt.toISOString(),
-      };
-    }
-  } catch (error) {
-    console.warn('DB unreachable in getCurrentUser, using JWT fallback payload');
+  // Non-demo users: Safe query with 600ms circuit breaker
+  const user = await safeDbQuery(
+    async () => {
+      return await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          verifiedStatus: true,
+          avatar: true,
+          createdAt: true,
+        },
+      });
+    },
+    null,
+    600
+  );
+
+  if (user) {
+    return {
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+    };
   }
 
   // Graceful Fallback if DB is offline or user not found
