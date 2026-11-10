@@ -66,10 +66,12 @@ function LoginForm() {
     await doLogin(email, password);
   };
 
-  const handleDemoLogin = async (demoEmail: string, roleName: string) => {
+  const fillDemoCredentials = (demoEmail: string, roleName: string) => {
     setEmail(demoEmail);
     setPassword('password123');
-    await doLogin(demoEmail, 'password123', roleName);
+    setActiveRole(roleName);
+    setError('');
+    setSuccessMsg(`Loaded ${roleName.toUpperCase()} credentials into form. Click "Sign In" to continue.`);
   };
 
   return (
@@ -149,83 +151,56 @@ function LoginForm() {
         </button>
       </form>
 
-      {/* 1-Click Instant Demo Credentials */}
+      {/* Auto-Fill Demo Credentials */}
       <div className="border-t border-white/15 pt-4 space-y-3">
         <span className="text-[11px] font-extrabold text-[#eaf2ff] uppercase tracking-wider block text-center">
-          ⚡ 1-CLICK INSTANT DEMO LOGIN
+          ⚡ AUTO-FILL DEMO CREDENTIALS
         </span>
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('admin@example.com', 'admin')}
+            onClick={() => fillDemoCredentials('admin@example.com', 'admin')}
             className={`p-3 rounded-xl border text-center transition-all group cursor-pointer disabled:opacity-70 ${
               activeRole === 'admin'
-                ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-600/40 scale-102'
+                ? 'bg-purple-600/30 text-white border-purple-400 ring-2 ring-purple-500/50 scale-102'
                 : 'bg-purple-500/20 hover:bg-purple-500/30 border-purple-500/30 text-purple-200'
             }`}
           >
-            {activeRole === 'admin' ? (
-              <div className="flex flex-col items-center justify-center py-0.5">
-                <Loader2 className="w-4 h-4 animate-spin text-white mb-0.5" />
-                <span className="font-extrabold text-[10px]">Opening...</span>
-              </div>
-            ) : (
-              <>
-                <span className="font-extrabold text-[11px] block group-hover:text-white">👑 Admin</span>
-                <span className="text-[9px] text-purple-300 block mt-0.5 font-mono">Command Center</span>
-              </>
-            )}
+            <span className="font-extrabold text-[11px] block group-hover:text-white">👑 Admin</span>
+            <span className="text-[9px] text-purple-300 block mt-0.5 font-mono">Fill Admin</span>
           </button>
 
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('seller@example.com', 'seller')}
+            onClick={() => fillDemoCredentials('seller@example.com', 'seller')}
             className={`p-3 rounded-xl border text-center transition-all group cursor-pointer disabled:opacity-70 ${
               activeRole === 'seller'
-                ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-600/40 scale-102'
+                ? 'bg-emerald-600/30 text-white border-emerald-400 ring-2 ring-emerald-500/50 scale-102'
                 : 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-500/30 text-emerald-200'
             }`}
           >
-            {activeRole === 'seller' ? (
-              <div className="flex flex-col items-center justify-center py-0.5">
-                <Loader2 className="w-4 h-4 animate-spin text-white mb-0.5" />
-                <span className="font-extrabold text-[10px]">Opening...</span>
-              </div>
-            ) : (
-              <>
-                <span className="font-extrabold text-[11px] block group-hover:text-white">🏡 Seller</span>
-                <span className="text-[9px] text-emerald-300 block mt-0.5 font-mono">List & Sell</span>
-              </>
-            )}
+            <span className="font-extrabold text-[11px] block group-hover:text-white">🏡 Seller</span>
+            <span className="text-[9px] text-emerald-300 block mt-0.5 font-mono">Fill Seller</span>
           </button>
 
           <button
             type="button"
             disabled={loading}
-            onClick={() => handleDemoLogin('buyer@example.com', 'buyer')}
+            onClick={() => fillDemoCredentials('buyer@example.com', 'buyer')}
             className={`p-3 rounded-xl border text-center transition-all group cursor-pointer disabled:opacity-70 ${
               activeRole === 'buyer'
-                ? 'bg-[#5f86ff] text-white border-blue-400 shadow-lg shadow-blue-600/40 scale-102'
+                ? 'bg-[#5f86ff]/30 text-white border-blue-400 ring-2 ring-blue-500/50 scale-102'
                 : 'bg-[#5f86ff]/20 hover:bg-[#5f86ff]/30 border-[#5f86ff]/30 text-blue-200'
             }`}
           >
-            {activeRole === 'buyer' ? (
-              <div className="flex flex-col items-center justify-center py-0.5">
-                <Loader2 className="w-4 h-4 animate-spin text-white mb-0.5" />
-                <span className="font-extrabold text-[10px]">Opening...</span>
-              </div>
-            ) : (
-              <>
-                <span className="font-extrabold text-[11px] block group-hover:text-white">👤 Buyer</span>
-                <span className="text-[9px] text-[#5f86ff] block mt-0.5 font-mono">Explore & Buy</span>
-              </>
-            )}
+            <span className="font-extrabold text-[11px] block group-hover:text-white">👤 Buyer</span>
+            <span className="text-[9px] text-[#5f86ff] block mt-0.5 font-mono">Fill Buyer</span>
           </button>
         </div>
         <p className="text-[10px] text-[#93a9c7] text-center">
-          Click any role above to automatically authenticate and immediately enter its dashboard.
+          Click any role above to put the email and password into the text boxes, then click &ldquo;Sign In&rdquo; when ready.
         </p>
       </div>
 

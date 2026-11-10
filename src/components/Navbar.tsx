@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Heart, Sparkles, LogOut, ShieldCheck, Building2, User } from 'lucide-react';
+import { Heart, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
@@ -62,7 +62,7 @@ export default function Navbar() {
           <Link
             href="/properties"
             className={`px-3 py-1.5 rounded-xl transition-all ${
-              isActive('/properties') && !pathname.includes('verifiedOnly')
+              isActive('/properties')
                 ? 'text-white bg-white/15 border border-white/20 shadow-xs'
                 : 'hover:text-white hover:bg-white/10'
             }`}
@@ -79,17 +79,6 @@ export default function Navbar() {
             }`}
           >
             Compare
-          </Link>
-
-          <Link
-            href="/properties?verifiedOnly=true"
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 ${
-              pathname.includes('verifiedOnly')
-                ? 'text-emerald-300 bg-emerald-500/20 border border-emerald-500/30'
-                : 'hover:text-emerald-300 hover:bg-white/10'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Verified
           </Link>
 
           {showBuyer && (
