@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { getDistinctTour360Url } from '@/lib/panoramas';
+import { safeDbQuery } from '@/lib/dbCircuitBreaker';
 
 const FALLBACK_ADMIN_PROPERTIES = [
   {
@@ -170,21 +171,34 @@ export async function GET(request: Request) {
         ];
       }
 
-      const [total, properties] = await Promise.all([
-        prisma.property.count({ where }),
-        prisma.property.findMany({
-          where,
-          include: {
-            owner: { select: { id: true, name: true, email: true, phone: true, role: true, verifiedStatus: true } },
-            media: true,
-            _count: { select: { enquiries: true, siteVisits: true, wishlistedBy: true } },
-            underwritingReports: { orderBy: { createdAt: 'desc' }, take: 1 },
-          },
-          orderBy: { createdAt: 'desc' },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-      ]);
+      const dbResult = await safeDbQuery(
+        async () => {
+          const [totalCount, propList] = await Promise.all([
+            prisma.property.count({ where }),
+            prisma.property.findMany({
+              where,
+              include: {
+                owner: { select: { id: true, name: true, email: true, phone: true, role: true, verifiedStatus: true } },
+                media: true,
+                _count: { select: { enquiries: true, siteVisits: true, wishlistedBy: true } },
+                underwritingReports: { orderBy: { createdAt: 'desc' }, take: 1 },
+              },
+              orderBy: { createdAt: 'desc' },
+              skip: (page - 1) * limit,
+              take: limit,
+            }),
+          ]);
+          return { total: totalCount, properties: propList };
+        },
+        null,
+        1000
+      );
+
+      if (!dbResult) {
+        throw new Error('DATABASE_OFFLINE');
+      }
+
+      const { total, properties } = dbResult;
 
       const formatted = properties.map((p) => ({
         ...p,

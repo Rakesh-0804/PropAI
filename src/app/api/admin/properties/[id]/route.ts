@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { getDistinctTour360Url } from '@/lib/panoramas';
+import { safeDbQuery } from '@/lib/dbCircuitBreaker';
 
 // Admin: GET single property with full financial details
 export async function GET(
@@ -15,18 +16,24 @@ export async function GET(
     }
 
     try {
-      const property = await prisma.property.findUnique({
-        where: { id: params.id },
-        include: {
-          owner: { select: { id: true, name: true, email: true, phone: true, role: true, verifiedStatus: true } },
-          media: true,
-          underwritingReports: { orderBy: { createdAt: 'desc' }, take: 1 },
-          _count: { select: { enquiries: true, siteVisits: true, wishlistedBy: true } },
+      const property = await safeDbQuery(
+        async () => {
+          return await prisma.property.findUnique({
+            where: { id: params.id },
+            include: {
+              owner: { select: { id: true, name: true, email: true, phone: true, role: true, verifiedStatus: true } },
+              media: true,
+              underwritingReports: { orderBy: { createdAt: 'desc' }, take: 1 },
+              _count: { select: { enquiries: true, siteVisits: true, wishlistedBy: true } },
+            },
+          });
         },
-      });
+        null,
+        800
+      );
 
       if (!property) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+        throw new Error('NOT_FOUND_OR_DB_OFFLINE');
       }
 
       return NextResponse.json({

@@ -5,6 +5,7 @@ import { computePropertyMatchScore } from '@/lib/ai/matchScorer';
 import { getCurrentUser } from '@/lib/auth';
 import { getDistinctTour360Url } from '@/lib/panoramas';
 import { bulkCacheProperties } from '@/lib/propertyCache';
+import { safeDbQuery } from '@/lib/dbCircuitBreaker';
 
 // In-memory cache for ultra-fast API response times (< 5ms)
 const propertiesCache = new Map<string, { data: any; timestamp: number }>();
@@ -154,26 +155,30 @@ export async function GET(request: Request) {
     const maxPrice = searchParams.get('maxPrice');
     const verifiedOnly = searchParams.get('verifiedOnly') === 'true';
 
-    let propertiesRaw: any[] = [];
-    try {
-      const where: any = {};
-      if (city) where.city = { contains: city };
-      if (type) where.type = type;
-      if (propertyType) where.propertyType = propertyType;
-      if (bedrooms && !isNaN(Number(bedrooms))) where.bedrooms = { gte: Number(bedrooms) };
-      if (minPrice && !isNaN(Number(minPrice))) where.price = { ...where.price, gte: Number(minPrice) };
-      if (maxPrice && !isNaN(Number(maxPrice))) where.price = { ...where.price, lte: Number(maxPrice) };
-      if (verifiedOnly) where.verifiedStatus = 'verified';
+    const where: any = {};
+    if (city) where.city = { contains: city };
+    if (type) where.type = type;
+    if (propertyType) where.propertyType = propertyType;
+    if (bedrooms && !isNaN(Number(bedrooms))) where.bedrooms = { gte: Number(bedrooms) };
+    if (minPrice && !isNaN(Number(minPrice))) where.price = { ...where.price, gte: Number(minPrice) };
+    if (maxPrice && !isNaN(Number(maxPrice))) where.price = { ...where.price, lte: Number(maxPrice) };
+    if (verifiedOnly) where.verifiedStatus = 'verified';
 
-      propertiesRaw = await prisma.property.findMany({
-        where,
-        include: { media: true, owner: true },
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch (dbError) {
-      console.warn('Prisma DB query failed in GET /api/properties. Using fallback properties:', dbError);
-      propertiesRaw = FALLBACK_PROPERTIES;
-    }
+    const dbProperties = await safeDbQuery(
+      async () => {
+        return await prisma.property.findMany({
+          where,
+          include: { media: true, owner: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+      null,
+      1000
+    );
+
+    const propertiesRaw = dbProperties && Array.isArray(dbProperties) && dbProperties.length > 0
+      ? dbProperties
+      : FALLBACK_PROPERTIES;
 
     const properties = propertiesRaw.map(p => {
       const amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities || '[]') : (p.amenities || []);
@@ -217,7 +222,7 @@ export async function GET(request: Request) {
         amenities: amenitiesArr,
         createdAt: typeof p.createdAt === 'string' ? p.createdAt : p.createdAt?.toISOString(),
         updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : p.updatedAt?.toISOString(),
-        matchScore: p.matchScore || matchScore,
+        matchScore: (p as any).matchScore || matchScore,
       };
     });
 
